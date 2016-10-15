@@ -67,15 +67,19 @@ BATCH_SIZE = 128
 LEARNING_RATE = 1e-3
 NUM_HIDDEN = 256
 
-X_ = tf.placeholder(tf.float32, shape=(BATCH_SIZE,SEQ_LENGTH))
-Y_ = tf.placeholder(tf.float32, shape=(BATCH_SIZE,vocabulary_size))
+with tf.name_scope('X_'):
+	X_ = tf.placeholder(tf.float32, shape=(BATCH_SIZE,SEQ_LENGTH))
 
-keep_prob = tf.placeholder(tf.float32)
+with tf.name_scope('Y_'):
+	Y_ = tf.placeholder(tf.float32, shape=(BATCH_SIZE,vocabulary_size))
+
+with tf.name_scope('keep_prob'):
+	keep_prob = tf.placeholder(tf.float32)
 
 with tf.name_scope('Model'):
 	# *** LSTM ***
 	with tf.name_scope('LSTM'):
-		lstm = tf.nn.rnn_cell.BasicLSTMCell(NUM_HIDDEN,state_is_tuple=True)
+		lstm = tf.nn.rnn_cell.LSTMCell(NUM_HIDDEN,state_is_tuple=True)
 		# Initial state of the LSTM memory
 		state = lstm.zero_state(BATCH_SIZE,tf.float32)
 
@@ -98,15 +102,57 @@ with tf.name_scope('Model'):
 with tf.name_scope('Loss'):
 	loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits_out, Y_))
 
+# *** ACCURACY ***
+with tf.name_scope('Accuracy'):
+	accuracy = tf.equal(tf.argmax(predicted_Y, 1), tf.argmax(Y_, 1))
+	mean_accuracy = tf.reduce_mean(tf.cast(accuracy, tf.float32))
+	
 # *** TRAIN STEP ***
 with tf.name_scope('Train_step'):
 	train_step = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
 
-# *** SUMMARIES ***	
+# *** SUMMARIES ***
 tf.scalar_summary("loss", loss)
+tf.scalar_summary("mean_accuracy", mean_accuracy)
 merged_summary_op = tf.merge_all_summaries()
 
 # *** INITIALIZATION ***
 init = tf.initialize_all_variables()
 
 # === TRAINING ===
+LOGS_PATH = 'logs/'
+NUM_EPOCHS = 10
+KEEP_PROB = 0.2
+DISPLAY_STEP = 100
+
+with tf.Session() as session:
+	session.run(init)
+	# op to write logs to Tensorboard
+	summary_writer = tf.train.SummaryWriter(LOGS_PATH, graph=tf.get_default_graph())
+	
+	num_steps_per_epoch = num_sequences/BATCH_SIZE
+	
+	print("\nSTART TRAINING (",NUM_EPOCHS,"epochs,",num_steps_per_epoch,"steps per epoch )")
+	for epoch in range(NUM_EPOCHS):
+		print("*** EPOCH",epoch,"***")
+		avg_loss = 0.0
+		avg_accuracy = 0.0
+		for step in range(num_steps_per_epoch):
+			batch_X = X[step * BATCH_SIZE:(step + 1) * BATCH_SIZE]
+			batch_Y = Y[step * BATCH_SIZE:(step + 1) * BATCH_SIZE]
+			_, loss_value, accuracy_value, summary = session.run([train_step,loss,mean_accuracy,merged_summary_op], feed_dict={X_: batch_X, Y_: batch_Y, keep_prob: KEEP_PROB})
+			
+			avg_loss += loss_value
+			avg_accuracy += accuracy_value
+			
+			# Write logs at every iteration
+			summary_writer.add_summary(summary, epoch * num_steps_per_epoch + step)
+			
+			if step % DISPLAY_STEP == 0:
+				print("Batch Loss =",loss_value,"at step",epoch * num_steps_per_epoch + step)
+				print("Batch Accuracy =",accuracy_value,"at step",epoch * num_steps_per_epoch + step)
+			
+		avg_loss = avg_loss/num_steps_per_epoch
+		avg_accuracy = avg_accuracy/num_steps_per_epoch
+		print("Average Batch Loss =",avg_loss,"at epoch",epoch)
+		print("Average Batch Accuracy =",avg_accuracy,"at epoch",epoch)
