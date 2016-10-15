@@ -9,6 +9,7 @@ I reimplemented the model with tensorflow
 from __future__ import print_function
 import codecs
 import numpy as np
+import tensorflow as tf
 
 DATA_FOLDER = 'data/'
 DATA_PATH = DATA_FOLDER + 'wonderland.txt'
@@ -62,3 +63,35 @@ print("X shape:",X.shape)
 print("Y shape:",Y.shape)
 
 # === DEFINE MODEL ===
+BATCH_SIZE = 128
+LEARNING_RATE = 1e-3
+NUM_HIDDEN = 256
+
+X_ = tf.placeholder(tf.float32, shape=(BATCH_SIZE,SEQ_LENGTH))
+Y_ = tf.placeholder(tf.float32, shape=(BATCH_SIZE,vocabulary_size))
+
+keep_prob = tf.placeholder(tf.float32)
+
+# *** LSTM ***
+lstm = tf.nn.rnn_cell.BasicLSTMCell(NUM_HIDDEN,state_is_tuple=True)
+# Initial state of the LSTM memory
+state = lstm.zero_state(BATCH_SIZE,tf.float32)
+
+# The value of state is updated after processing each batch of characters
+lstm_out, state = lstm(X_, state)
+
+# *** DROPOUT ***
+lstm_out_dropout = tf.nn.dropout(lstm_out, keep_prob)
+
+# *** OUTPUT LAYER ***
+weights_out = tf.truncated_normal((NUM_HIDDEN,vocabulary_size), stddev=0.1)
+biaises_out = tf.constant(0.1, shape=[vocabulary_size])
+
+logits_out = tf.matmul(lstm_out_dropout,weights_out) + biaises_out
+predicted_Y = tf.nn.softmax(logits_out)
+
+# *** LOSS ***
+loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits_out, Y_))
+train_step = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
+
+# === TRAINING ===
