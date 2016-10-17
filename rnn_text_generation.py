@@ -10,9 +10,30 @@ from __future__ import print_function
 import codecs
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.ops import rnn
 
+# === CONSTANTS ===
+# Paths
 DATA_FOLDER = 'data/'
 DATA_PATH = DATA_FOLDER + 'wonderland.txt'
+
+# To clean the vocabulary
+UNKNOWN_TOKEN = 'UKN'
+# If empty, all characters are in the vocabulary and UNKNOWN_TOKEN is not used. Otherwise, replace those charcacters with UNKNOWN_TOKEN.
+UNKNOWN_CHARS = ['\x80', '\x98', '\x99', '\x9c', '\x9d', '\xbb', '\xbf', '\xe2', '\xef']
+
+# Model parameters
+SEQ_LENGTH = 100
+NUM_FEATURES = 1
+BATCH_SIZE = 128
+LEARNING_RATE = 1e-3
+NUM_HIDDEN = 256
+
+# For training
+LOGS_PATH = 'logs/'
+NUM_EPOCHS = 5
+KEEP_PROB = 0.5
+DISPLAY_STEP = 100
 
 # === GET THE DATA ===
 #with codecs.open(DATA_PATH, encoding='utf-8') as textfile:
@@ -23,24 +44,43 @@ raw_text = raw_text.lower() # Convert to lower case to reduce the vocabulary use
 
 # === CREATE VOCABULARY ===
 chars = sorted(list(set(raw_text))) # This is the vocabulary
-char_to_int = dict((char, index) for index, char in enumerate(chars)) # Mapping from char to int
-int_to_char = dict((index, char) for index, char in enumerate(chars)) # Mapping from int to char
 
+# If UNKNOWN_CHARS is not empty...
+if UNKNOWN_CHARS:
+	# ... clean vocabulary
+	for unknown_char in UNKNOWN_CHARS:
+		chars.remove(unknown_char)
+	chars.append(UNKNOWN_TOKEN)
+
+char_to_int_dict = dict((char, index) for index, char in enumerate(chars)) # Mapping from char to int
+int_to_char_dict = dict((index, char) for index, char in enumerate(chars)) # Mapping from int to char
+
+def char_to_int(char):
+	if UNKNOWN_CHARS and char in UNKNOWN_CHARS:
+		return char_to_int_dict[UNKNOWN_TOKEN]
+	else:
+		return char_to_int_dict[char]
+		
+def int_to_char(char):
+	if UNKNOWN_CHARS and char in UNKNOWN_CHARS:
+		return char_to_int_dict[UNKNOWN_TOKEN]
+	else:
+		return int_to_char_dict[char]
+		
 raw_text_size = len(raw_text)
 vocabulary_size = len(chars)
 
+print("Vocabulary :",chars)
 print(vocabulary_size,"characters in vocabulary")
 
 # === CREATE DATASETS ===
-SEQ_LENGTH = 100
-
 dataX = [] # Sequences of characters (converted to int)
 dataY = [] # Character to predict from sequences (converted to int)
 for i in range(0, raw_text_size - SEQ_LENGTH):
 	input_seq = raw_text[i:i + SEQ_LENGTH]
 	char_out = raw_text[i + SEQ_LENGTH]
-	dataX.append([char_to_int[char] for char in input_seq])
-	dataY.append(char_to_int[char_out])
+	dataX.append([char_to_int(char) for char in input_seq])
+	dataY.append(char_to_int(char_out))
 
 num_sequences = len(dataX)
 print("Total number of sequences in dataset: ", num_sequences)
@@ -52,8 +92,8 @@ def to_categorical(data,vocabulary_size):
 	res[np.arange(len(data_np)),data_np] = 1
 	return res
 
-# reshape X to be [samples, time steps]
-X = np.reshape(dataX, (num_sequences, SEQ_LENGTH))
+# reshape X to be [samples, time steps, number of features]
+X = np.reshape(dataX, (num_sequences, SEQ_LENGTH, NUM_FEATURES))
 # normalize
 X = X / float(vocabulary_size)
 # one hot encode the output variable
@@ -63,12 +103,20 @@ print("X shape:",X.shape)
 print("Y shape:",Y.shape)
 
 # === DEFINE MODEL ===
-BATCH_SIZE = 128
-LEARNING_RATE = 1e-3
-NUM_HIDDEN = 256
-
 with tf.name_scope('X_'):
-	X_ = tf.placeholder(tf.float32, shape=(BATCH_SIZE,SEQ_LENGTH))
+	X_ = tf.placeholder(tf.float32, shape=(BATCH_SIZE,SEQ_LENGTH,NUM_FEATURES))
+	
+	""" From https://github.com/aymericdamien/TensorFlow-Examples/blob/master/examples/3_NeuralNetworks/recurrent_network.py """
+	# Prepare data shape to match `rnn` function requirements
+	# Current data input shape: (batch_size, n_steps, n_input)
+	# Required shape: 'n_steps' tensors list of shape (batch_size, n_input)
+	
+	# Permuting batch_size and n_steps
+	transposed_X_ = tf.transpose(X_, [1, 0, 2])
+	# Reshaping to (n_steps*batch_size, n_input)
+	reshaped_X_ = tf.reshape(transposed_X_, [-1, NUM_FEATURES])
+	# Split to get a list of 'n_steps' tensors of shape (batch_size, n_input)
+	splited_X_ = tf.split(0, SEQ_LENGTH, reshaped_X_)
 
 with tf.name_scope('Y_'):
 	Y_ = tf.placeholder(tf.float32, shape=(BATCH_SIZE,vocabulary_size))
@@ -80,11 +128,8 @@ with tf.name_scope('Model'):
 	# *** LSTM ***
 	with tf.name_scope('LSTM'):
 		lstm = tf.nn.rnn_cell.LSTMCell(NUM_HIDDEN,state_is_tuple=True)
-		# Initial state of the LSTM memory
-		state = lstm.zero_state(BATCH_SIZE,tf.float32)
-
-		# The value of state is updated after processing each batch of characters
-		lstm_out, state = lstm(X_, state)
+		lstm_outputs, states = rnn.rnn(lstm, splited_X_, dtype=tf.float32)
+		lstm_out = lstm_outputs[-1]
 	
 	# *** DROPOUT ***
 	with tf.name_scope('Dropout'):
@@ -120,11 +165,6 @@ merged_summary_op = tf.merge_all_summaries()
 init = tf.initialize_all_variables()
 
 # === TRAINING ===
-LOGS_PATH = 'logs/'
-NUM_EPOCHS = 10
-KEEP_PROB = 0.2
-DISPLAY_STEP = 100
-
 with tf.Session() as session:
 	session.run(init)
 	# op to write logs to Tensorboard
@@ -140,6 +180,7 @@ with tf.Session() as session:
 		for step in range(num_steps_per_epoch):
 			batch_X = X[step * BATCH_SIZE:(step + 1) * BATCH_SIZE]
 			batch_Y = Y[step * BATCH_SIZE:(step + 1) * BATCH_SIZE]
+			
 			_, loss_value, accuracy_value, summary = session.run([train_step,loss,mean_accuracy,merged_summary_op], feed_dict={X_: batch_X, Y_: batch_Y, keep_prob: KEEP_PROB})
 			
 			avg_loss += loss_value
