@@ -7,6 +7,7 @@ I reimplemented the model with tensorflow
 """
 
 from __future__ import print_function
+import time
 import codecs
 import numpy as np
 import tensorflow as tf
@@ -31,7 +32,7 @@ NUM_HIDDEN = 256
 
 # For training
 LOGS_PATH = 'logs/'
-NUM_EPOCHS = 5
+NUM_EPOCHS = 2
 KEEP_PROB = 0.5
 DISPLAY_STEP = 100
 
@@ -165,6 +166,12 @@ merged_summary_op = tf.merge_all_summaries()
 init = tf.initialize_all_variables()
 
 # === TRAINING ===
+# Helper to display time
+def seconds2minutes(time):
+	minutes = int(time) / 60
+	seconds = int(time) % 60
+	return minutes, seconds
+
 with tf.Session() as session:
 	session.run(init)
 	# op to write logs to Tensorboard
@@ -173,6 +180,8 @@ with tf.Session() as session:
 	num_steps_per_epoch = num_sequences/BATCH_SIZE
 	
 	print("\nSTART TRAINING (",NUM_EPOCHS,"epochs,",num_steps_per_epoch,"steps per epoch )")
+	begin_time = time_0 = time.time()
+	
 	for epoch in range(NUM_EPOCHS):
 		print("*** EPOCH",epoch,"***")
 		avg_loss = 0.0
@@ -187,13 +196,26 @@ with tf.Session() as session:
 			avg_accuracy += accuracy_value
 			
 			# Write logs at every iteration
-			summary_writer.add_summary(summary, epoch * num_steps_per_epoch + step)
+			absolute_step = epoch * num_steps_per_epoch + step
+			summary_writer.add_summary(summary, absolute_step)
 			
 			if step % DISPLAY_STEP == 0:
-				print("Batch Loss =",loss_value,"at step",epoch * num_steps_per_epoch + step)
-				print("Batch Accuracy =",accuracy_value,"at step",epoch * num_steps_per_epoch + step)
+				print("Batch Loss =",loss_value,"at step",absolute_step)
+				print("Batch Accuracy =",accuracy_value,"at step",absolute_step)
+				
+				# Time spent is measured
+				if absolute_step > 0:
+					t = time.time()
+					d = t - time_0
+					time_0 = t
+					
+					print("Time:",d,"s to compute",DISPLAY_STEP,"steps")
 			
 		avg_loss = avg_loss/num_steps_per_epoch
 		avg_accuracy = avg_accuracy/num_steps_per_epoch
 		print("Average Batch Loss =",avg_loss,"at epoch",epoch)
 		print("Average Batch Accuracy =",avg_accuracy,"at epoch",epoch)
+	
+	total_time = time.time() - begin_time
+	total_time_minutes, total_time_seconds = seconds2minutes(total_time)
+	print("*** Total time to compute",NUM_EPOCHS,"epochs:",total_time_minutes,"minutes and",total_time_seconds,"seconds (",total_time,"s)***")
