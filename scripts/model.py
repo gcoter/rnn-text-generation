@@ -13,14 +13,14 @@ class BasicConfig(object):
 class TrainingConfig(BasicConfig):
 	def __init__(self,vocabulary_size):
 		BasicConfig.__init__(self,vocabulary_size)
-		self.model_name = "training_model"
+		self.model_name = "model"
 		self.seq_length = constants.SEQ_LENGTH
 		self.batch_size = constants.BATCH_SIZE
 		
 class GenerationConfig(BasicConfig):
 	def __init__(self,vocabulary_size):
 		BasicConfig.__init__(self,vocabulary_size)
-		self.model_name = "generation_model"
+		self.model_name = "model"
 		self.seq_length = 1
 		self.batch_size = 1
 
