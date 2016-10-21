@@ -13,9 +13,11 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import rnn
 
+import model
+
 # === CONSTANTS ===
 # Paths
-DATA_FOLDER = 'data/'
+DATA_FOLDER = '../data/'
 DATA_PATH = DATA_FOLDER + 'wonderland.txt'
 
 # To clean the vocabulary
@@ -23,15 +25,8 @@ UNKNOWN_TOKEN = 'UKN'
 # If empty, all characters are in the vocabulary and UNKNOWN_TOKEN is not used. Otherwise, replace those charcacters with UNKNOWN_TOKEN.
 UNKNOWN_CHARS = ['\x80', '\x98', '\x99', '\x9c', '\x9d', '\xbb', '\xbf', '\xe2', '\xef']
 
-# Model parameters
-SEQ_LENGTH = 100
-NUM_FEATURES = 1
-BATCH_SIZE = 128
-LEARNING_RATE = 1e-3
-NUM_HIDDEN = 256
-
 # For training
-LOGS_PATH = 'logs/'
+LOGS_PATH = '../logs/'
 NUM_EPOCHS = 2
 KEEP_PROB = 0.5
 DISPLAY_STEP = 100
@@ -104,66 +99,8 @@ print("X shape:",X.shape)
 print("Y shape:",Y.shape)
 
 # === DEFINE MODEL ===
-with tf.name_scope('X_'):
-	X_ = tf.placeholder(tf.float32, shape=(BATCH_SIZE,SEQ_LENGTH,NUM_FEATURES))
-	
-	""" From https://github.com/aymericdamien/TensorFlow-Examples/blob/master/examples/3_NeuralNetworks/recurrent_network.py """
-	# Prepare data shape to match `rnn` function requirements
-	# Current data input shape: (batch_size, n_steps, n_input)
-	# Required shape: 'n_steps' tensors list of shape (batch_size, n_input)
-	
-	# Permuting batch_size and n_steps
-	transposed_X_ = tf.transpose(X_, [1, 0, 2])
-	# Reshaping to (n_steps*batch_size, n_input)
-	reshaped_X_ = tf.reshape(transposed_X_, [-1, NUM_FEATURES])
-	# Split to get a list of 'n_steps' tensors of shape (batch_size, n_input)
-	splited_X_ = tf.split(0, SEQ_LENGTH, reshaped_X_)
-
-with tf.name_scope('Y_'):
-	Y_ = tf.placeholder(tf.float32, shape=(BATCH_SIZE,vocabulary_size))
-
-with tf.name_scope('keep_prob'):
-	keep_prob = tf.placeholder(tf.float32)
-
-with tf.name_scope('Model'):
-	# *** LSTM ***
-	with tf.name_scope('LSTM'):
-		lstm = tf.nn.rnn_cell.LSTMCell(NUM_HIDDEN,state_is_tuple=True)
-		lstm_outputs, states = rnn.rnn(lstm, splited_X_, dtype=tf.float32)
-		lstm_out = lstm_outputs[-1]
-	
-	# *** DROPOUT ***
-	with tf.name_scope('Dropout'):
-		lstm_out_dropout = tf.nn.dropout(lstm_out, keep_prob)
-
-	# *** OUTPUT LAYER ***
-	with tf.name_scope('Output'):
-		weights_out = tf.truncated_normal((NUM_HIDDEN,vocabulary_size), stddev=0.1)
-		biaises_out = tf.constant(0.1, shape=[vocabulary_size])
-
-		logits_out = tf.matmul(lstm_out_dropout,weights_out) + biaises_out
-		predicted_Y = tf.nn.softmax(logits_out)
-
-# *** LOSS ***
-with tf.name_scope('Loss'):
-	loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits_out, Y_))
-
-# *** ACCURACY ***
-with tf.name_scope('Accuracy'):
-	accuracy = tf.equal(tf.argmax(predicted_Y, 1), tf.argmax(Y_, 1))
-	mean_accuracy = tf.reduce_mean(tf.cast(accuracy, tf.float32))
-	
-# *** TRAIN STEP ***
-with tf.name_scope('Train_step'):
-	train_step = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
-
-# *** SUMMARIES ***
-tf.scalar_summary("loss", loss)
-tf.scalar_summary("mean_accuracy", mean_accuracy)
-merged_summary_op = tf.merge_all_summaries()
-
-# *** INITIALIZATION ***
-init = tf.initialize_all_variables()
+training_config = model.TrainingConfig(vocabulary_size)
+training_model = model.Model(training_config)
 
 # === TRAINING ===
 # Helper to display time
@@ -173,7 +110,7 @@ def seconds2minutes(time):
 	return minutes, seconds
 
 with tf.Session() as session:
-	session.run(init)
+	session.run(training_model.init)
 	# op to write logs to Tensorboard
 	summary_writer = tf.train.SummaryWriter(LOGS_PATH, graph=tf.get_default_graph())
 	
@@ -190,7 +127,7 @@ with tf.Session() as session:
 			batch_X = X[step * BATCH_SIZE:(step + 1) * BATCH_SIZE]
 			batch_Y = Y[step * BATCH_SIZE:(step + 1) * BATCH_SIZE]
 			
-			_, loss_value, accuracy_value, summary = session.run([train_step,loss,mean_accuracy,merged_summary_op], feed_dict={X_: batch_X, Y_: batch_Y, keep_prob: KEEP_PROB})
+			_, loss_value, accuracy_value, summary = session.run([training_model.train_step,training_model.loss,training_model.mean_accuracy,training_model.merged_summary_op], feed_dict={training_model.X_: batch_X, training_model.Y_: batch_Y, training_model.keep_prob: KEEP_PROB})
 			
 			avg_loss += loss_value
 			avg_accuracy += accuracy_value
