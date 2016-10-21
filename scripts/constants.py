@@ -19,6 +19,6 @@ LEARNING_RATE = 1e-3
 
 # For training
 LOGS_PATH = '../logs/'
-NUM_EPOCHS = 1
+NUM_EPOCHS = 0
 KEEP_PROB = 0.5
 DISPLAY_STEP = 100

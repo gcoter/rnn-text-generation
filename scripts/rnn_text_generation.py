@@ -9,12 +9,26 @@ I reimplemented the model with tensorflow
 from __future__ import print_function
 import os.path
 import tensorflow as tf
+import numpy as np
+import random
+import pickle
 
 import datamanager
 import model
 import constants
 import train_utils
-			
+
+def sample(probabilities, temperature=1.0):
+	probabilities = np.log(probabilities) / temperature
+	probabilities = np.exp(probabilities) / np.sum(np.exp(probabilities))
+	r = random.random() # range: [0,1)
+	total = 0.0
+	for i in range(len(probabilities)):
+		total += probabilities[i]
+		if total>r:
+			return i
+	return len(probabilities)-1 
+
 # === MAIN CODE ===
 if not os.path.isfile(constants.MODEL_PATH):
 	print(constants.MODEL_PATH,"not found : start training procedure...")
@@ -31,7 +45,13 @@ if not os.path.isfile(constants.MODEL_PATH):
 else:
 	print(constants.MODEL_PATH,"found : start text generation...")
 	
-	vocabulary_size = 45 # <--- BAD
+	# *** LOAD VOCABULARY ***
+	char_to_int_dict = pickle.load(open("../parameters/char_to_int_dict.pickle", "rb"))
+	print("char_to_int_dict loaded")
+	int_to_char_dict = pickle.load(open("../parameters/int_to_char_dict.pickle", "rb"))
+	print("int_to_char_dict loaded")
+	
+	vocabulary_size = len(char_to_int_dict)
 	
 	# *** DEFINE MODEL ***
 	generation_config = model.GenerationConfig(vocabulary_size)
@@ -42,3 +62,22 @@ else:
 		saver = tf.train.Saver() 
 		saver.restore(session, constants.MODEL_PATH)
 		print("Model restored from file " + constants.MODEL_PATH)
+		
+		# *** Generate Text ***
+		text_size = 100
+		generated_text = ""
+		state_c = np.zeros((1,constants.NUM_HIDDEN))
+		state_h = np.zeros((1,constants.NUM_HIDDEN))
+		
+		input = np.array([[[datamanager.char_to_int(char_to_int_dict,".")]]])
+		
+		for i in range(text_size):
+			probabilities, state_c, state_h = session.run([generation_model.predicted_Y,generation_model.states.c,generation_model.states.h], feed_dict={generation_model.X_: input, generation_model.initial_state.c: state_c, generation_model.initial_state.h: state_h, generation_model.keep_prob: 1.0})
+			generated_text_index = sample(probabilities[0], temperature=1.0)
+			generated_character = datamanager.int_to_char(int_to_char_dict,generated_text_index)
+			generated_text += generated_character
+			input = np.array([[[generated_text_index]]])
+			
+		print("GENERATED TEXT")
+		print()
+		print(generated_text)

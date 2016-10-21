@@ -1,5 +1,6 @@
 from __future__ import print_function
 import numpy as np
+import pickle
 # import codecs
 
 import constants
@@ -24,6 +25,12 @@ def create_vocabulary(raw_text):
 
 	char_to_int_dict = dict((char, index) for index, char in enumerate(chars)) # Mapping from char to int
 	int_to_char_dict = dict((index, char) for index, char in enumerate(chars)) # Mapping from int to char
+	
+	# Save dictionaries
+	pickle.dump(char_to_int_dict, open("../parameters/char_to_int_dict.pickle", "wb"))
+	print('char_to_int_dict saved')
+	pickle.dump(int_to_char_dict, open("../parameters/int_to_char_dict.pickle", "wb"))
+	print('int_to_char_dict saved')
 	
 	return chars, char_to_int_dict, int_to_char_dict
 
