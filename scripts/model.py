@@ -1,19 +1,21 @@
 import tensorflow as tf
 from tensorflow.python.ops import rnn
 
+import constants
+
 class BasicConfig(object):
 	def __init__(self,vocabulary_size):
 		self.vocabulary_size = vocabulary_size
-		self.num_hidden = 256
-		self.num_features = 1
-		self.learning_rate = 1e-3
+		self.num_hidden = constants.NUM_HIDDEN
+		self.num_features = constants.NUM_FEATURES
+		self.learning_rate = constants.LEARNING_RATE
 		
 class TrainingConfig(BasicConfig):
 	def __init__(self,vocabulary_size):
 		BasicConfig.__init__(self,vocabulary_size)
 		self.model_name = "training_model"
-		self.seq_length = 100
-		self.batch_size = 128
+		self.seq_length = constants.SEQ_LENGTH
+		self.batch_size = constants.BATCH_SIZE
 		
 class GenerationConfig(BasicConfig):
 	def __init__(self,vocabulary_size):
