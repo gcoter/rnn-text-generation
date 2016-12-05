@@ -52,7 +52,7 @@ class Model(object):
 				# *** LSTM ***
 				with tf.name_scope('LSTM'):
 					self.lstm = tf.nn.rnn_cell.LSTMCell(config.num_hidden,state_is_tuple=True)
-					self.initial_state = self.lstm.zero_state(config.batch_size, dtype=tf.float32)					
+					self.initial_state = self.lstm.zero_state(config.batch_size, dtype=tf.float32)
 					self.lstm_outputs, self.states = rnn.rnn(self.lstm, self.splited_X_, initial_state=self.initial_state, dtype=tf.float32)
 					self.lstm_out = self.lstm_outputs[-1]
 				
@@ -62,8 +62,8 @@ class Model(object):
 
 				# *** OUTPUT LAYER ***
 				with tf.name_scope('Output'):
-					self.weights_out = tf.truncated_normal((config.num_hidden,config.vocabulary_size), stddev=0.1)
-					self.biaises_out = tf.constant(0.1, shape=[config.vocabulary_size])
+					self.weights_out = tf.random_normal([config.num_hidden,config.vocabulary_size])
+					self.biaises_out = tf.random_normal([config.vocabulary_size])
 
 					self.logits_out = tf.matmul(self.lstm_out_dropout,self.weights_out) + self.biaises_out
 					self.predicted_Y = tf.nn.softmax(self.logits_out)
