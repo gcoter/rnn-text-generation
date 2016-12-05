@@ -48,7 +48,7 @@ def int_to_char(int_to_char_dict,char):
 
 def to_categorical(data,vocabulary_size):
 	data_np = np.array(data)
-	res = np.zeros((len(data_np), vocabulary_size), dtype=np.bool)
+	res = np.zeros((len(data_np), vocabulary_size), dtype=np.int8)
 	res[np.arange(len(data_np)),data_np] = 1
 	return res
 		
@@ -75,8 +75,6 @@ def create_datasets(seq_length,num_features):
 
 	# reshape X to be [samples, time steps, number of features]
 	X = np.reshape(dataX, (num_sequences, seq_length, num_features))
-	# normalize
-	X = X / float(vocabulary_size)
 	# one hot encode the output variable
 	Y = to_categorical(dataY,vocabulary_size)
 
