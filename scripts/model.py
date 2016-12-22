@@ -51,8 +51,8 @@ class Model(object):
 			with tf.name_scope('Model'):
 				# *** LSTM ***
 				with tf.name_scope('LSTM'):
-					self.lstm_cell = tf.nn.rnn_cell.LSTMCell(config.num_hidden,state_is_tuple=False)
-					self.lstm = self.lstm_cell #tf.nn.rnn_cell.MultiRNNCell([self.lstm_cell] * 2,state_is_tuple=False)
+					self.lstm_cell = tf.nn.rnn_cell.LSTMCell(config.num_hidden,state_is_tuple=True)
+					self.lstm = tf.nn.rnn_cell.MultiRNNCell([self.lstm_cell] * 1,state_is_tuple=True)
 					self.initial_state = self.lstm.zero_state(config.batch_size, dtype=tf.float32)
 					self.lstm_outputs, self.states = rnn.rnn(self.lstm, self.splited_X_, initial_state=self.initial_state, dtype=tf.float32)
 					self.lstm_out = self.lstm_outputs[-1]
