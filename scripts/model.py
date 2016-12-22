@@ -51,7 +51,8 @@ class Model(object):
 			with tf.name_scope('Model'):
 				# *** LSTM ***
 				with tf.name_scope('LSTM'):
-					self.lstm = tf.nn.rnn_cell.LSTMCell(config.num_hidden,state_is_tuple=True)
+					self.lstm_cell = tf.nn.rnn_cell.LSTMCell(config.num_hidden,state_is_tuple=False)
+					self.lstm = self.lstm_cell #tf.nn.rnn_cell.MultiRNNCell([self.lstm_cell] * 2,state_is_tuple=False)
 					self.initial_state = self.lstm.zero_state(config.batch_size, dtype=tf.float32)
 					self.lstm_outputs, self.states = rnn.rnn(self.lstm, self.splited_X_, initial_state=self.initial_state, dtype=tf.float32)
 					self.lstm_out = self.lstm_outputs[-1]
@@ -62,8 +63,8 @@ class Model(object):
 
 				# *** OUTPUT LAYER ***
 				with tf.name_scope('Output'):
-					self.weights_out = tf.random_normal([config.num_hidden,config.vocabulary_size])
-					self.biaises_out = tf.random_normal([config.vocabulary_size])
+					self.weights_out = tf.Variable(tf.random_normal([config.num_hidden,config.vocabulary_size]))
+					self.biaises_out = tf.Variable(tf.random_normal([config.vocabulary_size]))
 
 					self.logits_out = tf.matmul(self.lstm_out_dropout,self.weights_out) + self.biaises_out
 					self.predicted_Y = tf.nn.softmax(self.logits_out)
@@ -82,9 +83,9 @@ class Model(object):
 				self.train_step = tf.train.AdamOptimizer(config.learning_rate).minimize(self.loss)
 
 			# *** SUMMARIES ***
-			tf.scalar_summary("loss", self.loss)
-			tf.scalar_summary("mean_accuracy", self.mean_accuracy)
-			self.merged_summary_op = tf.merge_all_summaries()
+			# tf.scalar_summary("loss", self.loss)
+			# tf.scalar_summary("mean_accuracy", self.mean_accuracy)
+			# self.merged_summary_op = tf.merge_all_summaries()
 
 			# *** INITIALIZATION ***
-			self.init = tf.initialize_all_variables()
+			self.init = tf.global_variables_initializer()

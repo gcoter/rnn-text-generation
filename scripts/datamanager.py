@@ -1,13 +1,13 @@
 from __future__ import print_function
 import numpy as np
 import pickle
-# import codecs
+#import codecs
 
 import constants
 
 def get_raw_text(data_path):
 	#with codecs.open(data_path, encoding='utf-8') as textfile:
-	with open(data_path, 'r') as textfile:
+	with open(data_path, 'r', encoding="utf-8") as textfile:
 		raw_text = textfile.read()
 
 	raw_text = raw_text.lower() # Convert to lower case to reduce the vocabulary used (characters)
@@ -77,8 +77,5 @@ def create_datasets(seq_length,num_features):
 	X = np.reshape(dataX, (num_sequences, seq_length, num_features))
 	# one hot encode the output variable
 	Y = to_categorical(dataY,vocabulary_size)
-
-	print("X shape:",X.shape)
-	print("Y shape:",Y.shape)
 	
 	return X,Y,vocabulary_size

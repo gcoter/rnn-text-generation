@@ -8,14 +8,14 @@ MODEL_PATH = '../parameters/model.ckpt'
 UNKNOWN_TOKEN = 'UKN'
 
 # If empty, all characters are in the vocabulary and UNKNOWN_TOKEN is not used. Otherwise, replace those charcacters with UNKNOWN_TOKEN.
-UNKNOWN_CHARS = ['\x80', '\x98', '\x99', '\x9c', '\x9d', '\xbb', '\xbf', '\xe2', '\xef']
+UNKNOWN_CHARS = ['*','-','0','3','_','‘','’','“', '”','\ufeff']
 
 # Model parameters
 NUM_FEATURES = 1
 SEQ_LENGTH = 100
 BATCH_SIZE = 128
 NUM_HIDDEN = 256
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 1e-1
 
 # For training
 LOGS_PATH = '../logs/'

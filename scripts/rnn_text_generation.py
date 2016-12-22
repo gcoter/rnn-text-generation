@@ -35,13 +35,24 @@ if not os.path.isfile(constants.MODEL_PATH):
 
 	# *** CONSTRUCT DATASETS ***
 	X, Y, vocabulary_size = datamanager.create_datasets(constants.SEQ_LENGTH,constants.NUM_FEATURES)
+	valid_index = int(len(X) * 0.1)
+
+	valid_X = X[:valid_index]
+	train_X = X[valid_index:]
+	valid_Y = Y[:valid_index]
+	train_Y = Y[valid_index:]
+	
+	print("train_X:",train_X.shape)
+	print("train_Y:",train_Y.shape)
+	print("valid_X:",valid_X.shape)
+	print("valid_Y:",valid_Y.shape)
 
 	# *** DEFINE MODEL ***
 	training_config = model.TrainingConfig(vocabulary_size)
 	training_model = model.Model(training_config)
 
 	# *** TRAINING ***
-	train_utils.train(training_model,X,Y,constants.NUM_EPOCHS,constants.BATCH_SIZE,constants.DISPLAY_STEP,constants.LOGS_PATH,constants.MODEL_PATH,constants.KEEP_PROB)
+	train_utils.train(training_model,train_X,train_Y,valid_X,valid_Y,constants.NUM_EPOCHS,constants.BATCH_SIZE,constants.DISPLAY_STEP,constants.LOGS_PATH,constants.MODEL_PATH,constants.KEEP_PROB)
 else:
 	print(constants.MODEL_PATH,"found : start text generation...")
 	
@@ -66,13 +77,12 @@ else:
 		# *** Generate Text ***
 		text_size = 100
 		generated_text = ""
-		state_c = np.zeros((1,constants.NUM_HIDDEN))
-		state_h = np.zeros((1,constants.NUM_HIDDEN))
+		states = generation_model.initial_state.eval()
 		
 		input = np.array([[[datamanager.char_to_int(char_to_int_dict,".")]]])
 		
 		for i in range(text_size):
-			probabilities, state_c, state_h = session.run([generation_model.predicted_Y,generation_model.states.c,generation_model.states.h], feed_dict={generation_model.X_: input, generation_model.initial_state.c: state_c, generation_model.initial_state.h: state_h, generation_model.keep_prob: 1.0})
+			probabilities, states = session.run([generation_model.predicted_Y,generation_model.states], feed_dict={generation_model.X_: input, generation_model.initial_state: states, generation_model.keep_prob: 1.0})
 			generated_text_index = sample(probabilities[0], temperature=1.0)
 			generated_character = datamanager.int_to_char(int_to_char_dict,generated_text_index)
 			generated_text += generated_character
