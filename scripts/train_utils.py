@@ -43,23 +43,22 @@ def train(model,train_X,train_Y,valid_X,valid_Y,num_epochs,batch_size,display_st
 				batch_X = train_X[step * batch_size:(step + 1) * batch_size]
 				batch_Y = train_Y[step * batch_size:(step + 1) * batch_size]
 				
-				_, loss_value, accuracy_value = session.run([model.train_step,model.loss,model.mean_accuracy], feed_dict={model.X_: batch_X, model.Y_: batch_Y, model.keep_prob: keep_prob})
-				
-				avg_loss += loss_value
-				avg_accuracy += accuracy_value
+				_ = session.run(model.train_step, feed_dict={model.X_: batch_X, model.Y_: batch_Y, model.keep_prob: keep_prob})
 				
 				# Write logs at every iteration
 				absolute_step = epoch * num_steps_per_epoch + step
 				# summary_writer.add_summary(summary, absolute_step)
 				
 				if step % display_step == 0:
+					loss_value, accuracy_value = session.run([model.loss,model.mean_accuracy], feed_dict={model.X_: batch_X, model.Y_: batch_Y, model.keep_prob: 1.0})
 					print("Batch Loss =",loss_value,"at step",absolute_step)
 					print("Batch Accuracy =",accuracy_value,"at step",absolute_step)
 					
 					if step % (5*display_step) == 0:
+						
 						valid_loss, valid_accuracy = test_on_valid_data(session,model,valid_X,valid_Y,batch_size)
 						print("Validation Loss =",valid_loss,"at step",absolute_step)
-						print("Validation Accuracy =",valid_accuracy,"at step",absolute_step)
+						#print("Validation Accuracy =",valid_accuracy,"at step",absolute_step)
 					
 					# Time spent is measured
 					if absolute_step > 0:
@@ -68,11 +67,6 @@ def train(model,train_X,train_Y,valid_X,valid_Y,num_epochs,batch_size,display_st
 						time_0 = t
 						
 						print("Time:",d,"s to compute",display_step,"steps")
-				
-			avg_loss = avg_loss/num_steps_per_epoch
-			avg_accuracy = avg_accuracy/num_steps_per_epoch
-			print("Average Batch Loss =",avg_loss,"at epoch",epoch)
-			print("Average Batch Accuracy =",avg_accuracy,"at epoch",epoch)
 		
 		total_time = time.time() - begin_time
 		total_time_minutes, total_time_seconds = seconds2minutes(total_time)
