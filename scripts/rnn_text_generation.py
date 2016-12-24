@@ -18,17 +18,6 @@ import model
 import constants
 import train_utils
 
-def sample(probabilities, temperature=1.0):
-	probabilities = np.log(probabilities) / temperature
-	probabilities = np.exp(probabilities) / np.sum(np.exp(probabilities))
-	r = random.random() # range: [0,1)
-	total = 0.0
-	for i in range(len(probabilities)):
-		total += probabilities[i]
-		if total>r:
-			return i
-	return len(probabilities)-1 
-
 # === MAIN CODE ===
 if not os.path.isfile(constants.MODEL_PATH):
 	print(constants.MODEL_PATH,"not found : start training procedure...")
@@ -48,11 +37,15 @@ if not os.path.isfile(constants.MODEL_PATH):
 	print("valid_Y:",valid_Y.shape)
 
 	# *** DEFINE MODEL ***
-	training_config = model.TrainingConfig(vocabulary_size)
-	training_model = model.Model(training_config)
+	with tf.variable_scope("models") as scope:
+		training_config = model.TrainingConfig(vocabulary_size)
+		training_model = model.Model(training_config)
+		scope.reuse_variables()
+		generation_config = model.GenerationConfig(vocabulary_size)
+		generation_model = model.Model(generation_config)
 
 	# *** TRAINING ***
-	train_utils.train(training_model,train_X,train_Y,valid_X,valid_Y,constants.NUM_EPOCHS,constants.BATCH_SIZE,constants.DISPLAY_STEP,constants.LOGS_PATH,constants.MODEL_PATH,constants.KEEP_PROB)
+	train_utils.train(training_model,generation_model,train_X,train_Y,valid_X,valid_Y,constants.NUM_EPOCHS,constants.BATCH_SIZE,constants.DISPLAY_STEP,constants.LOGS_PATH,constants.MODEL_PATH,constants.KEEP_PROB)
 else:
 	print(constants.MODEL_PATH,"found : start text generation...")
 	
