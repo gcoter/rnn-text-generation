@@ -78,4 +78,12 @@ def create_datasets(seq_length,num_features):
 	# one hot encode the output variable
 	Y = to_categorical(dataY,vocabulary_size)
 	
+	print("\nPrint some examples")
+	
+	for i in [0,100,200,400,500]:
+		print("\n=== EXAMPLE",i,"===")
+		x = ''.join([int_to_char(int_to_char_dict, c[0]) for c in X[i]])
+		y = int_to_char(int_to_char_dict, np.argmax(Y[i]))
+		print(x,"-->",y)
+	
 	return X,Y,vocabulary_size
