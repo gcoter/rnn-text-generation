@@ -2,7 +2,11 @@
 # Paths
 DATA_FOLDER = '../data/'
 DATA_PATH = DATA_FOLDER + 'wonderland.txt'
-MODEL_PATH = '../parameters/model.ckpt'
+CHAR_TO_INT_PATH = DATA_FOLDER + "char_to_int_dict.pickle"
+INT_TO_CHAR_PATH = DATA_FOLDER + "int_to_char_dict.pickle"
+
+PARAMETERS_FOLDER = '../parameters/'
+MODEL_PATH = PARAMETERS_FOLDER + 'model.ckpt'
 
 # To clean the vocabulary
 UNKNOWN_TOKEN = 'UKN'
