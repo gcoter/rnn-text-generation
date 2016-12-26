@@ -40,7 +40,8 @@ class DataManager(object):
 	def load_dictionaries(char_to_int_path=constants.CHAR_TO_INT_PATH,int_to_char_path=constants.INT_TO_CHAR_PATH):
 		char_to_int_dict = DataManager.load_object(char_to_int_path,object_name="char_to_int_dict")
 		int_to_char_dict = DataManager.load_object(int_to_char_path,object_name="int_to_char_dict")
-		return char_to_int_dict, int_to_char_dict
+		DataManager.char_to_int_dict = char_to_int_dict
+		DataManager.int_to_char_dict = int_to_char_dict
 		
 	@staticmethod
 	def get_char_to_int_dict():
