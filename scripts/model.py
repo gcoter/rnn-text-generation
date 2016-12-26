@@ -63,7 +63,7 @@ class Model(object):
 				
 				# *** DROPOUT ***
 				with tf.name_scope('Dropout'):
-					self.lstm_out_dropout = tf.nn.dropout(self.lstm_out, self.keep_prob)
+					self.lstm_out_dropout = tf.nn.dropout(tf.nn.relu(self.lstm_out), self.keep_prob)
 
 				# *** OUTPUT LAYER ***
 				with tf.name_scope('Output'):
@@ -126,10 +126,14 @@ class GenerationModel(object):
 	def get_loss(self,session,batch_X,batch_Y):
 		return session.run(self.training_submodel.loss, feed_dict={self.training_submodel.X_: batch_X, self.training_submodel.Y_: batch_Y, self.training_submodel.keep_prob: 1.0})
 			
-	def generate(self,session,first_token,size,temperature=1.0):
+	def generate(self,session,seed,size,temperature=1.0):
 		generated_text = ""
 		states = session.run(self.generation_submodel.initial_state)
-		input = np.array([[[DataManager.char_to_int(first_token)]]])
+		seed_list = list(seed)
+		input = None
+		for seed_char in seed_list:
+			input = np.array([[[DataManager.char_to_int(seed_char)]]])
+			states = session.run(self.generation_submodel.states, feed_dict={self.generation_submodel.X_: input, self.generation_submodel.initial_state: states, self.generation_submodel.keep_prob: 1.0})
 		for i in range(size):
 			probabilities, states = session.run([self.generation_submodel.predicted_Y,self.generation_submodel.states], feed_dict={self.generation_submodel.X_: input, self.generation_submodel.initial_state: states, self.generation_submodel.keep_prob: 1.0})
 			generated_text_index = self.sample(probabilities[0], temperature=temperature)
