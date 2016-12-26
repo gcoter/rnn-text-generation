@@ -59,10 +59,12 @@ class Trainer(object):
 							valid_loss = self.test_on_valid_data(session,batch_size)
 							print("Validation Loss =",valid_loss,"at step",absolute_step)
 							# Generate some text
-							generated_text = self.generation_model.generate(session,first_token=".",size=100,temperature=1.0)
+							seed = "Alice was beginning to get very tired of sitting by her sister on the\nbank, and of having nothing t"
+							generated_text = seed + self.generation_model.generate(session,seed=seed,size=100,temperature=1.0)
+							print("**************")
 							print("GENERATED TEXT")
 							print("**************")
-							print(">" + generated_text + "<")
+							print(generated_text)
 							print("**************\n")
 						# Time spent is measured
 						if absolute_step > 0:
@@ -70,11 +72,11 @@ class Trainer(object):
 							d = t - time_0
 							time_0 = t
 							print("Time:",d,"s to compute",display_step,"steps")
-			
+				
+				# Save parameters
+				saver.save(session, model_path)
+				print("Parameters saved to",model_path)
+				
 			total_time = time.time() - begin_time
 			total_time_minutes, total_time_seconds = Trainer.seconds2minutes(total_time)
 			print("*** Total time to compute",num_epochs,"epochs:",total_time_minutes,"minutes and",total_time_seconds,"seconds (",total_time,"s)***")
-			
-			# Save parameters
-			saver.save(session, model_path)
-			print("Parameters saved to",model_path)
