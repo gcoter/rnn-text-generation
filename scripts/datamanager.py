@@ -93,16 +93,21 @@ class DataManager(object):
 			return unknown_token
 		else:
 			return int_to_char_dict[i]
+			
+	@staticmethod
+	def X_to_categorical(dataX,vocabulary_size):
+		data_np = np.array(dataX)
+		return (np.arange(vocabulary_size) == data_np[:,:,None]).astype(int)
 	
 	@staticmethod
-	def to_categorical(data,vocabulary_size):
-		data_np = np.array(data)
+	def Y_to_categorical(dataY,vocabulary_size):
+		data_np = np.array(dataY)
 		res = np.zeros((len(data_np), vocabulary_size), dtype=np.int8)
 		res[np.arange(len(data_np)),data_np] = 1
 		return res
 	
 	@staticmethod
-	def create_datasets(valid_proportion=0.1,data_path=constants.DATA_PATH,seq_length=constants.SEQ_LENGTH,num_features=constants.NUM_FEATURES):
+	def create_datasets(valid_proportion=0.1,data_path=constants.DATA_PATH,seq_length=constants.SEQ_LENGTH):
 		raw_text = DataManager.get_raw_text(data_path)
 		chars = DataManager.create_vocabulary(raw_text)
 		
@@ -123,19 +128,21 @@ class DataManager(object):
 		num_sequences = len(dataX)
 		print("Total number of sequences in dataset: ", num_sequences)
 
-		# reshape X to be [samples, time steps, number of features]
-		X = np.reshape(dataX, (num_sequences, seq_length, num_features))
+		# one hot encode the input variable
+		X = DataManager.X_to_categorical(dataX,vocabulary_size)
 		# one hot encode the output variable
-		Y = DataManager.to_categorical(dataY,vocabulary_size)
+		Y = DataManager.Y_to_categorical(dataY,vocabulary_size)
+		
+		print("X:",X.shape)
+		print("Y:",Y.shape)
 		
 		print("\nPrint some examples")
-		
-		for i in [0,100,200,400,500]:
-			print("\n=== EXAMPLE",i,"===")
-			x = ''.join([DataManager.int_to_char(c[0]) for c in X[i]])
-			y = DataManager.int_to_char(np.argmax(Y[i]))
-			print(x,"-->",y)
-		print()
+		i = 0
+		print("\n=== EXAMPLE",i,"===")
+		print("X[0]:")
+		print(X[0])
+		print("Y[0]:")
+		print(Y[0])
 		
 		valid_index = int(len(X) * valid_proportion)
 		valid_X = X[:valid_index]
