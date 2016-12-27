@@ -7,25 +7,24 @@ import constants
 from datamanager import DataManager
 
 class BasicConfig(object):
-	def __init__(self,vocabulary_size,num_hidden=constants.NUM_HIDDEN,num_features=constants.NUM_FEATURES,learning_rate=constants.LEARNING_RATE):
-		self.vocabulary_size = vocabulary_size
-		self.num_hidden = num_hidden
+	def __init__(self,num_features,num_hidden=constants.NUM_HIDDEN,learning_rate=constants.LEARNING_RATE):
 		self.num_features = num_features
+		self.num_hidden = num_hidden
 		self.learning_rate = learning_rate
 		
 class TrainingConfig(BasicConfig):
-	def __init__(self,vocabulary_size,seq_length=constants.SEQ_LENGTH,batch_size=constants.BATCH_SIZE):
-		BasicConfig.__init__(self,vocabulary_size)
+	def __init__(self,num_features,batch_size=constants.BATCH_SIZE,seq_length=constants.SEQ_LENGTH):
+		BasicConfig.__init__(self,num_features)
 		self.model_name = "model"
-		self.seq_length = seq_length
 		self.batch_size = batch_size
+		self.seq_length = seq_length
 		
 class GenerationConfig(BasicConfig):
-	def __init__(self,vocabulary_size):
-		BasicConfig.__init__(self,vocabulary_size)
+	def __init__(self,num_features):
+		BasicConfig.__init__(self,num_features)
 		self.model_name = "model"
-		self.seq_length = 1
 		self.batch_size = 1
+		self.seq_length = 1
 
 class Model(object):
 	def __init__(self,config):
@@ -47,7 +46,7 @@ class Model(object):
 				self.splited_X_ = tf.split(0, self.config.seq_length, self.reshaped_X_)
 
 			with tf.name_scope('Y_'):
-				self.Y_ = tf.placeholder(tf.float32, shape=(None,self.config.vocabulary_size))
+				self.Y_ = tf.placeholder(tf.float32, shape=(None,self.config.num_features))
 
 			with tf.name_scope('keep_prob'):
 				self.keep_prob = tf.placeholder(tf.float32)
@@ -56,19 +55,19 @@ class Model(object):
 				# *** LSTM ***
 				with tf.name_scope('LSTM'):
 					self.lstm_cell = tf.nn.rnn_cell.LSTMCell(self.config.num_hidden,state_is_tuple=True)
-					self.lstm = tf.nn.rnn_cell.MultiRNNCell([self.lstm_cell] * 1,state_is_tuple=True)
+					self.lstm = tf.nn.rnn_cell.MultiRNNCell([self.lstm_cell] * 1, state_is_tuple=True)
 					self.initial_state = self.lstm.zero_state(self.config.batch_size, dtype=tf.float32)
 					self.lstm_outputs, self.states = rnn.rnn(self.lstm, self.splited_X_, initial_state=self.initial_state, dtype=tf.float32)
 					self.lstm_out = self.lstm_outputs[-1]
 				
 				# *** DROPOUT ***
 				with tf.name_scope('Dropout'):
-					self.lstm_out_dropout = tf.nn.dropout(tf.nn.relu(self.lstm_out), self.keep_prob)
+					self.lstm_out_dropout = tf.nn.dropout(self.lstm_out, self.keep_prob)
 
 				# *** OUTPUT LAYER ***
 				with tf.name_scope('Output'):
-					self.weights_out = tf.get_variable("weights_out",initializer=tf.random_normal(shape=[self.config.num_hidden,self.config.vocabulary_size]))
-					self.biaises_out = tf.get_variable("biaises_out",initializer=tf.random_normal(shape=[self.config.vocabulary_size]))
+					self.weights_out = tf.get_variable("weights_out",initializer=tf.random_normal(shape=[self.config.num_hidden,self.config.num_features],stddev=1/self.config.num_hidden))
+					self.biaises_out = tf.get_variable("biaises_out",initializer=tf.random_normal(shape=[self.config.num_features]))
 
 					self.logits_out = tf.matmul(self.lstm_out_dropout,self.weights_out) + self.biaises_out
 					self.predicted_Y = tf.nn.softmax(self.logits_out)
@@ -99,11 +98,12 @@ A GenerationModel has two sub-models: one model which is batch trainable and one
 Both models share the same parameters.
 """
 class GenerationModel(object):
-	def __init__(self,vocabulary_size,seq_length=constants.SEQ_LENGTH,batch_size=constants.BATCH_SIZE):
+	def __init__(self,vocabulary_size,batch_size=constants.BATCH_SIZE,seq_length=constants.SEQ_LENGTH):
+		self.vocabulary_size = vocabulary_size
 		with tf.variable_scope("models") as scope:
-			self.training_submodel = Model(TrainingConfig(vocabulary_size,seq_length=seq_length,batch_size=batch_size))
+			self.training_submodel = Model(TrainingConfig(num_features=self.vocabulary_size,seq_length=seq_length,batch_size=batch_size))
 			scope.reuse_variables()
-			self.generation_submodel = Model(GenerationConfig(vocabulary_size))
+			self.generation_submodel = Model(GenerationConfig(num_features=self.vocabulary_size))
 
 	def sample(self,probabilities,temperature=1.0):
 		probabilities = np.log(probabilities+1e-30) / temperature
@@ -132,12 +132,14 @@ class GenerationModel(object):
 		seed_list = list(seed)
 		input = None
 		for seed_char in seed_list:
-			input = np.array([[[DataManager.char_to_int(seed_char)]]])
+			input = np.array([[DataManager.char_to_int(seed_char)]])
+			input = DataManager.X_to_categorical(input,self.vocabulary_size)
 			states = session.run(self.generation_submodel.states, feed_dict={self.generation_submodel.X_: input, self.generation_submodel.initial_state: states, self.generation_submodel.keep_prob: 1.0})
 		for i in range(size):
 			probabilities, states = session.run([self.generation_submodel.predicted_Y,self.generation_submodel.states], feed_dict={self.generation_submodel.X_: input, self.generation_submodel.initial_state: states, self.generation_submodel.keep_prob: 1.0})
 			generated_text_index = self.sample(probabilities[0], temperature=temperature)
 			generated_character = DataManager.int_to_char(generated_text_index)
 			generated_text += generated_character
-			input = np.array([[[generated_text_index]]])
+			input = np.array([[generated_text_index]])
+			input = DataManager.X_to_categorical(input,self.vocabulary_size)
 		return generated_text
