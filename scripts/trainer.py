@@ -41,7 +41,7 @@ class Trainer(object):
 			begin_time = time_0 = time.time()
 			
 			for epoch in range(num_epochs):
-				print("*** EPOCH",epoch,"***")
+				print("\n*** EPOCH",epoch,"***\n")
 				avg_loss = 0.0
 				avg_accuracy = 0.0
 				for step in range(num_steps_per_epoch):
@@ -60,12 +60,14 @@ class Trainer(object):
 							print("Validation Loss =",valid_loss,"at step",absolute_step)
 							# Generate some text
 							seed = "Alice was beginning to get very tired of sitting by her sister on the\nbank, and of having nothing t"
-							generated_text = seed + self.generation_model.generate(session,seed=seed,size=100,temperature=1.0)
+							generated_text = self.generation_model.generate(session,seed=seed,size=100,temperature=1.0)
 							print("**************")
 							print("GENERATED TEXT")
 							print("**************")
+							print(seed)
+							print("**************")
 							print(generated_text)
-							print("**************\n")
+							print("**************")
 						# Time spent is measured
 						if absolute_step > 0:
 							t = time.time()

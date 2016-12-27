@@ -15,14 +15,13 @@ UNKNOWN_TOKEN = 'UKN'
 UNKNOWN_CHARS = [u'*',u'-',u'0',u'3',u'_',u'\u2018',u'\u2019',u'\u201c',u'\u201d',u'\ufeff'] #['*','-','0','3','_','‘','’','“', '”','\ufeff']
 
 # Model parameters
-NUM_FEATURES = 1
+BATCH_SIZE = 64
 SEQ_LENGTH = 100
-BATCH_SIZE = 128
-NUM_HIDDEN = 256
-LEARNING_RATE = 1e-1
+NUM_HIDDEN = 512
+LEARNING_RATE = 1e-2
 
 # For training
 LOGS_PATH = '../logs/'
-NUM_EPOCHS = 10
+NUM_EPOCHS = 20
 KEEP_PROB = 0.5
 DISPLAY_STEP = 100

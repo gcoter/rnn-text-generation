@@ -5,7 +5,7 @@ from datamanager import DataManager
 from model import GenerationModel
 from trainer import Trainer
 
-train = True
+train = False
 
 if train:
 	print("============= CREATING DATASETS =============")
@@ -14,7 +14,7 @@ if train:
 	generation_model = GenerationModel(DataManager.get_vocabulary_size(),seq_length=constants.SEQ_LENGTH,batch_size=constants.BATCH_SIZE)
 	print("============= TRAINING =============")
 	trainer = Trainer(generation_model,train_X,train_Y,valid_X,valid_Y)
-	trainer.train(num_epochs=10,batch_size=constants.BATCH_SIZE,display_step=constants.DISPLAY_STEP,model_path=constants.MODEL_PATH,keep_prob=constants.KEEP_PROB)
+	trainer.train(num_epochs=constants.NUM_EPOCHS,batch_size=constants.BATCH_SIZE,display_step=constants.DISPLAY_STEP,model_path=constants.MODEL_PATH,keep_prob=constants.KEEP_PROB)
 else:
 	import tensorflow as tf
 	generation_model = GenerationModel(DataManager.get_vocabulary_size(),seq_length=constants.SEQ_LENGTH,batch_size=constants.BATCH_SIZE)
@@ -28,7 +28,9 @@ else:
 		print("**************")
 		print("GENERATED TEXT")
 		print("**************")
-		print(seed + generated_text)
+		print(seed)
+		print("**************")
+		print(generated_text)
 		print("**************")
 
 """
