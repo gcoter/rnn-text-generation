@@ -6,7 +6,13 @@ This project is inspired from a tutorial (see references) which showed how to us
 
 I decided to reimplement it with Tensorflow, as an exercise.
 
-The current version seems to work, however it takes too much time with my CPU (30 minutes per epoch). I will run it soon on another machine with GPU.
+## Usage
+There are two main tasks:
+
+* Type `python rnn-text-generation.py train` to start training with default parameters
+* Type `python rnn-text-generation.py generate` to start text generation with default parameters
+
+All default parameters are defined in constants.py. You can provide any of those parameters (except UNKNOWN_CHARS) directly in the command line. Type `python rnn-text-generation.py -h`, `python rnn-text-generation.py train -h` or `python rnn-text-generation.py generate -h` for more information.
 
 ## References
 Inspired from http://machinelearningmastery.com/text-generation-lstm-recurrent-neural-networks-python-keras/
