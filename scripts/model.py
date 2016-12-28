@@ -3,25 +3,23 @@ import numpy as np
 from tensorflow.python.ops import rnn
 import random
 
-import constants
-from datamanager import DataManager
-
 class BasicConfig(object):
-	def __init__(self,num_features,num_hidden=constants.NUM_HIDDEN,learning_rate=constants.LEARNING_RATE):
+	def __init__(self,num_features,num_hidden,num_rnn,learning_rate):
 		self.num_features = num_features
 		self.num_hidden = num_hidden
+		self.num_rnn = num_rnn
 		self.learning_rate = learning_rate
 		
 class TrainingConfig(BasicConfig):
-	def __init__(self,num_features,batch_size=constants.BATCH_SIZE,seq_length=constants.SEQ_LENGTH):
-		BasicConfig.__init__(self,num_features)
+	def __init__(self,num_features,num_hidden,num_rnn,learning_rate,batch_size,seq_length):
+		BasicConfig.__init__(self,num_features,num_hidden,num_rnn,learning_rate)
 		self.model_name = "model"
 		self.batch_size = batch_size
 		self.seq_length = seq_length
 		
 class GenerationConfig(BasicConfig):
-	def __init__(self,num_features):
-		BasicConfig.__init__(self,num_features)
+	def __init__(self,num_features,num_hidden,num_rnn,learning_rate):
+		BasicConfig.__init__(self,num_features,num_hidden,num_rnn,learning_rate)
 		self.model_name = "model"
 		self.batch_size = 1
 		self.seq_length = 1
@@ -55,7 +53,7 @@ class Model(object):
 				# *** LSTM ***
 				with tf.name_scope('LSTM'):
 					self.lstm_cell = tf.nn.rnn_cell.LSTMCell(self.config.num_hidden,state_is_tuple=True)
-					self.lstm = tf.nn.rnn_cell.MultiRNNCell([self.lstm_cell] * 1, state_is_tuple=True)
+					self.lstm = tf.nn.rnn_cell.MultiRNNCell([self.lstm_cell] * self.config.num_rnn, state_is_tuple=True)
 					self.initial_state = self.lstm.zero_state(self.config.batch_size, dtype=tf.float32)
 					self.lstm_outputs, self.states = rnn.rnn(self.lstm, self.splited_X_, initial_state=self.initial_state, dtype=tf.float32)
 					self.lstm_out = self.lstm_outputs[-1]
@@ -98,12 +96,11 @@ A GenerationModel has two sub-models: one model which is batch trainable and one
 Both models share the same parameters.
 """
 class GenerationModel(object):
-	def __init__(self,vocabulary_size,batch_size=constants.BATCH_SIZE,seq_length=constants.SEQ_LENGTH):
-		self.vocabulary_size = vocabulary_size
+	def __init__(self,vocabulary_size,num_hidden,num_rnn,learning_rate,batch_size,seq_length):
 		with tf.variable_scope("models") as scope:
-			self.training_submodel = Model(TrainingConfig(num_features=self.vocabulary_size,seq_length=seq_length,batch_size=batch_size))
+			self.training_submodel = Model(TrainingConfig(vocabulary_size,num_hidden,num_rnn,learning_rate,batch_size,seq_length))
 			scope.reuse_variables()
-			self.generation_submodel = Model(GenerationConfig(num_features=self.vocabulary_size))
+			self.generation_submodel = Model(GenerationConfig(vocabulary_size,num_hidden,num_rnn,learning_rate))
 
 	def sample(self,probabilities,temperature=1.0):
 		probabilities = np.log(probabilities+1e-30) / temperature
@@ -126,20 +123,20 @@ class GenerationModel(object):
 	def get_loss(self,session,batch_X,batch_Y):
 		return session.run(self.training_submodel.loss, feed_dict={self.training_submodel.X_: batch_X, self.training_submodel.Y_: batch_Y, self.training_submodel.keep_prob: 1.0})
 			
-	def generate(self,session,seed,size,temperature=1.0):
+	def generate(self,datamanager,session,seed,size,temperature=1.0):
 		generated_text = ""
 		states = session.run(self.generation_submodel.initial_state)
 		seed_list = list(seed)
 		input = None
 		for seed_char in seed_list:
-			input = np.array([[DataManager.char_to_int(seed_char)]])
-			input = DataManager.X_to_categorical(input,self.vocabulary_size)
+			input = np.array([[datamanager.char_to_int(seed_char)]])
+			input = datamanager.X_to_categorical(input)
 			states = session.run(self.generation_submodel.states, feed_dict={self.generation_submodel.X_: input, self.generation_submodel.initial_state: states, self.generation_submodel.keep_prob: 1.0})
 		for i in range(size):
 			probabilities, states = session.run([self.generation_submodel.predicted_Y,self.generation_submodel.states], feed_dict={self.generation_submodel.X_: input, self.generation_submodel.initial_state: states, self.generation_submodel.keep_prob: 1.0})
 			generated_text_index = self.sample(probabilities[0], temperature=temperature)
-			generated_character = DataManager.int_to_char(generated_text_index)
+			generated_character = datamanager.int_to_char(generated_text_index)
 			generated_text += generated_character
 			input = np.array([[generated_text_index]])
-			input = DataManager.X_to_categorical(input,self.vocabulary_size)
+			input = datamanager.X_to_categorical(input)
 		return generated_text

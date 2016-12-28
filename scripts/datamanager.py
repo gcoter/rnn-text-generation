@@ -7,16 +7,6 @@ import os.path
 import constants
 
 class DataManager(object):
-	char_to_int_dict = None
-	int_to_char_dict = None
-
-	@staticmethod
-	def get_raw_text(data_path):
-		with codecs.open(data_path, encoding='utf-8') as textfile:
-			raw_text = textfile.read()
-		raw_text = raw_text.lower() # Convert to lower case to reduce the vocabulary used (characters)
-		return raw_text
-		
 	@staticmethod
 	def save_object(object,save_path,object_name="Object"):
 		pickle.dump(object, open(save_path, "wb"))
@@ -30,135 +20,149 @@ class DataManager(object):
 			return object
 		else:
 			print("ERROR: Unable to load",object_name,"from",load_path)
+	
+	def __init__(self,data_path,unknown_chars,unknown_token):
+		self.data_path = data_path
+		self.unknown_chars = unknown_chars
+		self.unknown_token = unknown_token
+		self.char_to_int_dict = None
+		self.int_to_char_dict = None
+		self.vocabulary_size = None
+		self.train_X = None
+		self.train_Y = None
+		self.valid_X = None
+		self.valid_Y = None
 		
-	@staticmethod
-	def save_dictionaries(char_to_int_path=constants.CHAR_TO_INT_PATH,int_to_char_path=constants.INT_TO_CHAR_PATH):
-		DataManager.save_object(DataManager.get_char_to_int_dict(),char_to_int_path,object_name="char_to_int_dict")
-		DataManager.save_object(DataManager.get_int_to_char_dict(),int_to_char_path,object_name="int_to_char_dict")
+	def get_raw_text(self):
+		with codecs.open(self.data_path, encoding='utf-8') as textfile:
+			raw_text = textfile.read()
+		raw_text = raw_text.lower() # Convert to lower case to reduce the vocabulary used (characters)
+		return raw_text
 		
-	@staticmethod
-	def load_dictionaries(char_to_int_path=constants.CHAR_TO_INT_PATH,int_to_char_path=constants.INT_TO_CHAR_PATH):
+	def save_dictionaries(self,char_to_int_path,int_to_char_path):
+		DataManager.save_object(self.get_char_to_int_dict(),char_to_int_path,object_name="char_to_int_dict")
+		DataManager.save_object(self.get_int_to_char_dict(),int_to_char_path,object_name="int_to_char_dict")
+		
+	def load_dictionaries(self,char_to_int_path,int_to_char_path):
 		char_to_int_dict = DataManager.load_object(char_to_int_path,object_name="char_to_int_dict")
 		int_to_char_dict = DataManager.load_object(int_to_char_path,object_name="int_to_char_dict")
-		DataManager.char_to_int_dict = char_to_int_dict
-		DataManager.int_to_char_dict = int_to_char_dict
+		self.char_to_int_dict = char_to_int_dict
+		self.int_to_char_dict = int_to_char_dict
 		
-	@staticmethod
-	def get_char_to_int_dict():
-		if DataManager.char_to_int_dict is None:
-			print("WARNING: char_to_int_dict is None")
-			print("Try loading both dictionaries...")
-			DataManager.load_dictionaries()
-		return DataManager.char_to_int_dict
+	def get_dictionaries(self,char_to_int_path=None,int_to_char_path=None):
+		return self.char_to_int_dict, self.int_to_char_dict
 		
-	@staticmethod
-	def get_int_to_char_dict():
-		if DataManager.int_to_char_dict is None:
-			print("WARNING: int_to_char_dict is None")
-			print("Try loading both dictionaries...")
-			DataManager.load_dictionaries()
-		return DataManager.int_to_char_dict
+	def get_char_to_int_dict(self):
+		return self.char_to_int_dict
+		
+	def get_int_to_char_dict(self):
+		return self.int_to_char_dict
 
-	@staticmethod
-	def create_vocabulary(raw_text,unknown_chars=constants.UNKNOWN_CHARS,unknown_token=constants.UNKNOWN_TOKEN):
+	def create_vocabulary(self,raw_text,char_to_int_path,int_to_char_path):
 		chars = sorted(list(set(raw_text))) # This is the vocabulary
 
 		# If unknown_chars is not empty...
-		if unknown_chars:
+		if self.unknown_chars:
 			# ... clean vocabulary
-			for unknown_char in unknown_chars:
+			for unknown_char in self.unknown_chars:
 				chars.remove(unknown_char)
-			chars.append(unknown_token)
+			chars.append(self.unknown_token)
 
-		DataManager.char_to_int_dict = dict((char, index) for index, char in enumerate(chars)) # Mapping from char to int
-		DataManager.int_to_char_dict = dict((index, char) for index, char in enumerate(chars)) # Mapping from int to char
+		self.char_to_int_dict = dict((char, index) for index, char in enumerate(chars)) # Mapping from char to int
+		self.int_to_char_dict = dict((index, char) for index, char in enumerate(chars)) # Mapping from int to char
 		
 		# Save dictionaries
-		DataManager.save_dictionaries()
+		self.save_dictionaries(char_to_int_path,int_to_char_path)
 		
 		return chars
 	
-	@staticmethod
-	def char_to_int(char,unknown_token=constants.UNKNOWN_TOKEN):
-		char_to_int_dict = DataManager.get_char_to_int_dict()
+	def char_to_int(self,char):
+		char_to_int_dict = self.get_char_to_int_dict()
 		if not char in char_to_int_dict.keys():
-			return char_to_int_dict[unknown_token]
+			return char_to_int_dict[self.unknown_token]
 		else:
 			return char_to_int_dict[char]
 			
-	@staticmethod
-	def int_to_char(i,unknown_token=constants.UNKNOWN_TOKEN):
-		int_to_char_dict = DataManager.get_int_to_char_dict()
+	def int_to_char(self,i):
+		int_to_char_dict = self.get_int_to_char_dict()
 		if not i in int_to_char_dict.keys():
-			return unknown_token
+			return self.unknown_token
 		else:
 			return int_to_char_dict[i]
-			
-	@staticmethod
-	def X_to_categorical(dataX,vocabulary_size):
+
+	def X_to_categorical(self,dataX):
+		vocabulary_size = self.get_vocabulary_size()
 		data_np = np.array(dataX)
 		return (np.arange(vocabulary_size) == data_np[:,:,None]).astype(int)
 	
-	@staticmethod
-	def Y_to_categorical(dataY,vocabulary_size):
+	def Y_to_categorical(self,dataY):
+		vocabulary_size = self.get_vocabulary_size()
 		data_np = np.array(dataY)
 		res = np.zeros((len(data_np), vocabulary_size), dtype=np.int8)
 		res[np.arange(len(data_np)),data_np] = 1
 		return res
 	
-	@staticmethod
-	def create_datasets(valid_proportion=0.1,data_path=constants.DATA_PATH,seq_length=constants.SEQ_LENGTH):
-		raw_text = DataManager.get_raw_text(data_path)
-		chars = DataManager.create_vocabulary(raw_text)
+	def construct_datasets(self,char_to_int_path,int_to_char_path,seq_length,valid_proportion):
+		raw_text = self.get_raw_text()
+		chars = self.create_vocabulary(raw_text,char_to_int_path,int_to_char_path)
 		
 		raw_text_size = len(raw_text)
-		vocabulary_size = len(chars)
+		self.vocabulary_size = len(chars)
 
 		print("Vocabulary :",chars)
-		print(vocabulary_size,"characters in vocabulary")
+		print(self.vocabulary_size,"characters in vocabulary")
 
 		dataX = [] # Sequences of characters (converted to int)
 		dataY = [] # Character to predict from sequences (converted to int)
 		for i in range(0, raw_text_size - seq_length):
 			input_seq = raw_text[i:i + seq_length]
 			char_out = raw_text[i + seq_length]
-			dataX.append([DataManager.char_to_int(char) for char in input_seq])
-			dataY.append(DataManager.char_to_int(char_out))
+			dataX.append([self.char_to_int(char) for char in input_seq])
+			dataY.append(self.char_to_int(char_out))
 
 		num_sequences = len(dataX)
 		print("Total number of sequences in dataset: ", num_sequences)
 
 		# one hot encode the input variable
-		X = DataManager.X_to_categorical(dataX,vocabulary_size)
+		X = self.X_to_categorical(dataX)
 		# one hot encode the output variable
-		Y = DataManager.Y_to_categorical(dataY,vocabulary_size)
+		Y = self.Y_to_categorical(dataY)
 		
 		print("X:",X.shape)
 		print("Y:",Y.shape)
 		
-		print("\nPrint some examples")
+		print("\n*** Print some examples ***")
 		i = 0
-		print("\n=== EXAMPLE",i,"===")
+		print("=== EXAMPLE",i,"===")
 		print("X[0]:")
 		print(X[0])
 		print("Y[0]:")
 		print(Y[0])
 		
 		valid_index = int(len(X) * valid_proportion)
-		valid_X = X[:valid_index]
-		train_X = X[valid_index:]
-		valid_Y = Y[:valid_index]
-		train_Y = Y[valid_index:]
+		self.valid_X = X[:valid_index]
+		self.train_X = X[valid_index:]
+		self.valid_Y = Y[:valid_index]
+		self.train_Y = Y[valid_index:]
 		
-		return train_X,train_Y,valid_X,valid_Y
+		return self.train_X,self.train_Y,self.valid_X,self.valid_Y
 		
-	@staticmethod
-	def get_vocabulary_size():
-		char_to_int_dict = DataManager.get_char_to_int_dict()
+	def get_vocabulary_size(self):
+		if not self.vocabulary_size is None:
+			return self.vocabulary_size
+		char_to_int_dict = self.get_char_to_int_dict()
 		if not char_to_int_dict is None:
 			return len(char_to_int_dict.keys())
+		print("WARNING: vocabulary_size is None")
 		return None
 	
-	@staticmethod
-	def get_datasets():
-		return DataManager.create_datasets()
+	def get_datasets(self,char_to_int_path=None,int_to_char_path=None,seq_length=None,valid_proportion=None):
+		if self.train_X is None or self.train_Y is None or self.valid_X is None or self.valid_Y is None:
+			if not char_to_int_path is None and not int_to_char_path is None and not seq_length is None and not valid_proportion is None:
+				return self.construct_datasets(char_to_int_path,int_to_char_path,seq_length,valid_proportion)
+			else:
+				print("ERROR: please provide all parameters to construct the datasets.")
+				print("get_datasets(self,char_to_int_path=None,int_to_char_path=None,seq_length=None,valid_proportion=None)")
+				return self.train_X,self.train_Y,self.valid_X,self.valid_Y
+		else:
+			return self.train_X,self.train_Y,self.valid_X,self.valid_Y

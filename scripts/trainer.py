@@ -2,22 +2,18 @@ from __future__ import print_function
 import time
 import tensorflow as tf
 
-import constants
-
 class Trainer(object):
-	def __init__(self,generation_model,train_X,train_Y,valid_X,valid_Y):
-		self.generation_model = generation_model
-		self.train_X = train_X
-		self.train_Y = train_Y
-		self.valid_X = valid_X
-		self.valid_Y = valid_Y
-		
 	# Helper to display time
 	@staticmethod
 	def seconds2minutes(time):
 		minutes = int(time) // 60
 		seconds = int(time) % 60
 		return minutes, seconds
+	
+	def __init__(self,datamanager,generation_model):
+		self.datamanager = datamanager
+		self.generation_model = generation_model
+		self.train_X, self.train_Y, self.valid_X, self.valid_Y = self.datamanager.get_datasets()
 		
 	def test_on_valid_data(self,session,batch_size):
 		num_valid_sequences = len(self.valid_X)
@@ -30,7 +26,7 @@ class Trainer(object):
 			avg_loss += loss_value
 		return avg_loss/num_steps
 
-	def train(self,num_epochs=constants.NUM_EPOCHS,batch_size=constants.BATCH_SIZE,display_step=constants.DISPLAY_STEP,model_path=constants.MODEL_PATH,keep_prob=constants.KEEP_PROB):
+	def train(self,num_epochs,batch_size,display_step,model_path,keep_prob):
 		saver = tf.train.Saver()
 		with tf.Session() as session:
 			self.generation_model.init(session,train=True)		
@@ -60,7 +56,7 @@ class Trainer(object):
 							print("Validation Loss =",valid_loss,"at step",absolute_step)
 							# Generate some text
 							seed = "Alice was beginning to get very tired of sitting by her sister on the\nbank, and of having nothing t"
-							generated_text = self.generation_model.generate(session,seed=seed,size=100,temperature=1.0)
+							generated_text = self.generation_model.generate(self.datamanager,session,seed=seed,size=100,temperature=1.0)
 							print("**************")
 							print("GENERATED TEXT")
 							print("**************")
