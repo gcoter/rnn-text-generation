@@ -19,13 +19,20 @@ def train(datamanager,args):
 	
 def generate(datamanager,args):
 	import tensorflow as tf
-	generation_model = GenerationModel(datamanager.get_vocabulary_size(),args.num_hidden,args.num_rnn,args.learning_rate,args.batch_size,args.seq_length)
+	print("============= LOADING DICTIONARIES =============")
 	datamanager.load_dictionaries(args.char_to_int_path,args.int_to_char_path)
+	print()
+	print("============= CREATING MODEL =============")
+	generation_model = GenerationModel(datamanager.get_vocabulary_size(),args.num_hidden,args.num_rnn,args.learning_rate,args.batch_size,args.seq_length)
+	print()
 	with tf.Session() as session:
 		# Restore variables from disk
+		print("============= RESTORING MODEL =============")
 		saver = tf.train.Saver() 
 		saver.restore(session, args.model_path)
 		print("Model restored from file " + args.model_path)
+		print()
+		print("============= TEXT GENERATION =============")
 		generated_text = generation_model.generate(datamanager,session,seed=args.seed,size=args.size,temperature=args.temperature)
 		print("**************")
 		print("GENERATED TEXT")
@@ -47,6 +54,7 @@ parser.add_argument("--model_path",default=constants.MODEL_PATH,type=str,require
 parser.add_argument("--unknown_token",default=constants.UNKNOWN_TOKEN,type=str,required=False,help="Token used to replace unknown characters (defined in constants.py).")
 parser.add_argument("--char_to_int_path",default=constants.CHAR_TO_INT_PATH,type=str,required=False,help="Path used to save and load the characters-to-integers dictionary.")
 parser.add_argument("--int_to_char_path",default=constants.INT_TO_CHAR_PATH,type=str,required=False,help="Path used to save and load the integers-to-characters dictionary.")
+parser.add_argument("--data_path",default=constants.DATA_PATH,type=str,required=False,help="Path to the data folder.")
 
 # SUBPARSERS
 subparsers = parser.add_subparsers(help="You can train the RNN or generate text with an already trained network.",dest="command")
@@ -54,7 +62,6 @@ subparsers = parser.add_subparsers(help="You can train the RNN or generate text 
 # TRAINING SUBPARSER
 train_parser = subparsers.add_parser("train", help="Train a new RNN.")
 train_parser.add_argument("--valid_proportion",default=0.1,type=float,required=False,help="Proportion of examples used to construct the validation set.")
-train_parser.add_argument("--data_path",default=constants.DATA_PATH,type=str,required=False,help="Path to the data folder.")
 train_parser.add_argument("--num_epochs",default=constants.NUM_EPOCHS,type=int,required=False,help="Number of epochs to train the model.")
 train_parser.add_argument("--display_step",default=constants.DISPLAY_STEP,type=int,required=False,help="The program displays validation loss and generated text every display_step steps.")
 train_parser.add_argument("--keep_prob",default=constants.KEEP_PROB,type=int,required=False,help="Probability used for dropout.")
