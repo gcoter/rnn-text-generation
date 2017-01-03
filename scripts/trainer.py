@@ -55,7 +55,7 @@ class Trainer(object):
 							valid_loss = self.test_on_valid_data(session,batch_size)
 							print("Validation Loss =",valid_loss,"at step",absolute_step)
 							# Generate some text
-							seed = "Alice was beginning to get very tired of sitting by her sister on the\nbank, and of having nothing t"
+							seed = "Alice was beginning to get very tired of sitting by her sister on the\nbank, and of having nothing t".lower()
 							generated_text = self.generation_model.generate(self.datamanager,session,seed=seed,size=100,temperature=1.0)
 							print("**************")
 							print("GENERATED TEXT")
