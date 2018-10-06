@@ -1,0 +1,5 @@
+md5: b3e7dd7ed68f6db3ae4d5869f2268e05
+outs:
+- cache: true
+  md5: a70054194fe2c8464c53ed358776368f
+  path: wonderland.txt
